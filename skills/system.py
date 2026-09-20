@@ -64,6 +64,15 @@ def _volume_handler(t):
         return f"Couldn't change the volume ({e})."
 
 
+# --- help / capabilities ---
+def _help_match(t):
+    return t in {"help", "what can you do", "capabilities", "commands"}
+
+
+def _help_handler(t):
+    return "I can tell the time or date, search the web, open common apps and sites, control volume, and chat when Gemini is configured."
+
+
 # --- exit ---
 def _exit_match(t):
     return _matches(t, "goodbye", "exit", "quit", "shut down jarvis", "stop listening")
@@ -78,5 +87,6 @@ SKILLS = [
     (_time_match, _time_handler),
     (_date_match, _date_handler),
     (_volume_match, _volume_handler),
+    (_help_match, _help_handler),
     (_exit_match, _exit_handler),
 ]

@@ -1,41 +1,30 @@
-"""
-Central configuration for Katarina.
-All secrets are read from environment variables — never hardcode keys here.
-
-Get a free Gemini API key at: https://aistudio.google.com/apikey
-
-Put your key in a ".env" file in this folder (see .env.example):
-    GEMINI_API_KEY=AIza...
-
-".env" is in .gitignore, so it's never committed to version control.
-"""
+"""Configuration loaded from environment variables (and an optional .env file)."""
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # reads .env into the environment, if present
+load_dotenv()
 
-# --- LLM brain ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-MODEL = "gemini-flash-latest"         # always points at Google's current recommended Flash model
-MAX_TOKENS = 1024
 
-# --- Assistant identity ---
-ASSISTANT_NAME = "Katarina"
-WAKE_WORD = "katarina"                # said at the start of a typed/spoken command (optional, see main.py)
+def _bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
-# --- Voice I/O ---
-VOICE_ENABLED = True                  # set False to run in text-only mode
-TTS_RATE = 185                        # words per minute for text-to-speech
-TTS_VOLUME = 1.0
-MIC_TIMEOUT = 6                       # seconds to wait for speech to start
-MIC_PHRASE_LIMIT = 12                 # max seconds for a single phrase
 
-# --- Personality (system prompt for the brain) ---
-SYSTEM_PROMPT = f"""You are {ASSISTANT_NAME}, a concise, capable personal AI assistant \
-running locally on the user's computer, inspired by JARVIS from Iron Man. \
-Keep spoken responses SHORT (1-3 sentences) since they will be read aloud by text-to-speech, \
-unless the user explicitly asks for detail. Be dry-witted but genuinely helpful. \
-You cannot control the operating system yourself — if the user wants an action performed \
-(opening an app, searching the web, checking the time, adjusting volume), say so plainly; \
-the skills system, not you, will have already tried to handle those before your turn.
-"""
+_raw_key = os.getenv("GEMINI_API_KEY", "").strip()
+# Treat the example placeholder as unset so first-run setup stays offline.
+GEMINI_API_KEY = "" if _raw_key in {"", "your-key-here", "your_api_key_here"} else _raw_key
+MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+MAX_TOKENS = int(os.getenv("GEMINI_MAX_TOKENS", "1024"))
+ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Katarina")
+VOICE_ENABLED = _bool_env("VOICE_ENABLED", True)
+TTS_RATE = int(os.getenv("TTS_RATE", "185"))
+TTS_VOLUME = float(os.getenv("TTS_VOLUME", "1.0"))
+MIC_TIMEOUT = float(os.getenv("MIC_TIMEOUT", "6"))
+MIC_PHRASE_LIMIT = float(os.getenv("MIC_PHRASE_LIMIT", "12"))
+
+SYSTEM_PROMPT = f"""You are {ASSISTANT_NAME}, a concise, capable personal AI assistant running locally.
+Keep spoken responses short (one to three sentences) unless the user requests detail.
+Be dry-witted but genuinely helpful. Local skills handle operating-system actions before
+messages reach you, so focus on conversation, explanations, and reasoning."""

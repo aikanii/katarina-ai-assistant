@@ -1,15 +1,4 @@
-"""
-JARVIS — personal assistant main loop.
-
-Flow each turn:
-  1. Listen (mic or typed input)
-  2. Try local skills first (instant, free, works offline)
-  3. If no skill matches, fall back to the Claude-powered brain
-  4. Speak the response
-
-Run:
-    python main.py
-"""
+"""Katarina's listen -> skill -> brain -> speak loop."""
 import sys
 import config
 from stt import Listener
@@ -18,40 +7,39 @@ from skills import try_skills
 
 
 def main():
-    speaker = Speaker()
-    listener = Listener()
-
-    # Brain is optional — JARVIS still runs (skills-only) without an API key
+    speaker, listener = Speaker(), Listener()
     brain = None
-    try:
-        from brain import Brain
-        brain = Brain()
-    except Exception as e:
-        print(f"[main] Brain disabled: {e}")
-        print("[main] Set ANTHROPIC_API_KEY to enable full conversation. Skills still work.")
+    if config.GEMINI_API_KEY:
+        try:
+            from brain import Brain
+            brain = Brain()
+        except Exception as exc:
+            print(f"[main] Brain disabled: {exc}", file=sys.stderr)
+    else:
+        print("[main] No GEMINI_API_KEY; running with local skills only.", file=sys.stderr)
 
     speaker.say(f"{config.ASSISTANT_NAME} online. How can I help?")
-
     while True:
         try:
             text = listener.listen()
             if not text:
                 continue
-
-            response = try_skills(text)  # skills run first
+            response = try_skills(text)
             if response is None:
                 if brain:
-                    response = brain.think(text)
+                    try:
+                        response = brain.think(text)
+                    except Exception as exc:
+                        print(f"[brain] Request failed: {exc}", file=sys.stderr)
+                        response = "I couldn't reach my online brain. Please try again."
                 else:
-                    response = "I don't have a skill for that, and my brain isn't connected — set ANTHROPIC_API_KEY to enable full conversation."
-
+                    response = "I can handle local commands, but conversation needs GEMINI_API_KEY."
             speaker.say(response)
-
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             speaker.say("Goodbye.")
-            sys.exit(0)
-        except Exception as e:
-            print(f"[main] Unexpected error: {e}", file=sys.stderr)
+            return
+        except Exception as exc:
+            print(f"[main] Unexpected error: {exc}", file=sys.stderr)
             speaker.say("Sorry, something went wrong there.")
 
 
